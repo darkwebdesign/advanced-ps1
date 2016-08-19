@@ -1,0 +1,333 @@
+#!/bin/bash
+##
+# Advanced PS1.
+#
+# @author  Raymond Schouten
+# @version 2016-03-08
+#
+#
+# Usage in .bashrc:
+# ~~~~~~~~~~~~~~~~~
+# # Source advanced PS1.
+# source '/path/to/advancedps1';
+#
+# # Enable advanced PS1 duration measurement.
+# trap '__advanced_ps1_debug_trap' DEBUG;
+#
+# # Enable advanced PS1.
+# PROMPT_COMMAND='__advanced_ps1';
+#
+#
+# Available options:
+# ~~~~~~~~~~~~~~~~~~
+# * ADVANCED_PS1_SHOWNEWLINE
+#   Show "newline" character and place prompt on new line when prompt was
+#   appended to last command output.
+#
+# * ADVANCED_PS1_SHOW0EXITCODE
+#   Always show exit code, even when it is 0.
+#
+# * ADVANCED_PS1_SHOWEXITCODEMESSAGE
+#   Show message if possible for exit code.
+#
+# * ADVANCED_PS1_SHOW0DURATION
+#   Always show duration, even when it is 0 seconds.
+#
+# * ADVANCED_PS1_SHOWTIME12H
+#   Show time in 12-hour format. 
+##
+
+##
+# Advanced PS1.
+##
+function __advanced_ps1()
+{
+    ## @var int ##
+    local -i CMD_EXITCODE=$?;
+
+    ## @var int ##
+    local -i CMD_DURATION=$(($SECONDS - ${__advanced_ps1_timer:-$SECONDS}));
+
+    ## @var string ##
+    local CHAR_SUCCESS='\342\234\223'; # Unicode "✓".
+
+    ## @var string ##
+    local CHAR_ERROR='\342\234\227'; # Unicode "✗".
+
+    ## @var string ##
+    #local CHAR_NEWLINE='\302\266'; # Unicode "¶".
+    local CHAR_NEWLINE='\342\226\274'; # Unicode "▼".
+
+    ## @var string ##
+    local TXT_RED='\[\033[0;31m\]';
+
+    ## @var string ##
+    local TXT_GREEN='\[\033[0;32m\]';
+
+    ## @var string ##
+    local TXT_DARKGRAY='\[\033[0;90m\]';
+
+    ## @var string ##
+    local TXT_LIGHTGRAY='\[\033[0;37m\]';
+
+    ## @var string ##
+    local TXT_YELLOW='\[\033[1;33m\]';
+
+    ## @var string ##
+    local TXT_LIGHTRED='\[\033[0;91m\]';
+
+    ## @var string ##
+    local TXT_RESET='\[\033[0m\]';
+
+    ##
+    # Main method.
+    #
+    # @param string[] args
+    ##
+    function main()
+    {
+        clearTimer;
+        clearPS1;
+        setPS1;
+        resetColor;
+    }
+
+    ##
+    # Clear timer.
+    ##
+    function clearTimer()
+    {
+        unset __advanced_ps1_timer;
+    }
+
+    ##
+    # Clear PS1.
+    ##
+    function clearPS1()
+    {
+        PS1='';
+    }
+
+    ##
+    # Set PS1.
+    ##
+    function setPS1()
+    {
+        if [[ "${ADVANCED_PS1_SHOWNEWLINE:-0}" > 0 ]]; then
+            addNewline;
+        fi;
+        addStatus;
+        if [[ "${ADVANCED_PS1_SHOW0EXITCODE:-0}" > 0 || $CMD_EXITCODE > 0 ]]; then
+            if [[ "${ADVANCED_PS1_SHOWEXITCODEMESSAGE:-0}" > 0 ]]; then
+                addExitCodeMessage;
+            else
+                addExitCode;
+            fi;
+        fi;
+        if [[ "${ADVANCED_PS1_SHOW0DURATION:-0}" > 0 || $CMD_DURATION > 0 ]]; then
+            addDuration;
+        fi;
+        addTime;
+        addUserHostPath;
+        addGitStatus;
+        addPrompt;
+    }
+
+    ##
+    # Add newline if needed.
+    #
+    # When this functionality is enabled, you cannot paste multiple commands
+    # separated by newlines on the command line anymore; only the first line
+    # of commands be will be executed.
+    ##
+    function addNewline()
+    {
+        local OLDIFS=$IFS;
+        local -i row;
+        local -i column;
+
+        IFS=';';
+        echo -ne '\033[6n';
+        read -s -d \[;
+        read -s -d 'R' row column;
+        IFS=$OLDIFS;
+
+        if [[ $column > 1 ]]; then
+            PS1+="${CHAR_NEWLINE}";
+            PS1+="\n";
+        fi;
+    }
+
+    ##
+    # Add status.
+    ##
+    function addStatus()
+    {
+        if [[ $CMD_EXITCODE == 0 ]]; then
+            PS1+="${TXT_GREEN}";
+            PS1+="${CHAR_SUCCESS} ";
+        else
+            PS1+="${TXT_RED}";
+            PS1+="${CHAR_ERROR} ";
+        fi;
+    }
+
+    ##
+    # Add exit code.
+    ##
+    function addExitCode()
+    {
+        PS1+="${TXT_LIGHTGRAY}";
+        PS1+="(${CMD_EXITCODE}) ";
+    }
+
+    ##
+    # Add exit code and message if possible.
+    ##
+    function addExitCodeMessage()
+    {
+        local -A messages=(
+            [1]='Catchall for general errors'
+            [2]='Misuse of shell builtins'
+            [126]='Command invoked cannot execute'
+            [127]='Command not found'
+            [128]='Invalid argument to exit'
+            [129]='Fatal error signal "1"'
+            [130]='Script terminated by Control-C'
+            [131]='Fatal error signal "3"'
+            [132]='Fatal error signal "4"'
+            [133]='Fatal error signal "5"'
+            [134]='Fatal error signal "6"'
+            [135]='Fatal error signal "7"'
+            [136]='Fatal error signal "8"'
+            [137]='Fatal error signal "9"'
+        )
+
+        PS1+="${TXT_LIGHTGRAY}";
+        if [[ -z "${messages[${CMD_EXITCODE}]}" ]]; then
+            PS1+="(${CMD_EXITCODE}) ";
+        else
+            PS1+="(${CMD_EXITCODE}: ${messages[${CMD_EXITCODE}]}) ";
+        fi;
+    }
+
+    ##
+    # Add duration.
+    ##
+    function addDuration()
+    {
+        local -i days=$(($CMD_DURATION / 60 / 60 / 24));
+        local -i hours=$(($CMD_DURATION / 60 / 60 % 24));
+        local -i minutes=$(($CMD_DURATION / 60 % 60));
+        local -i seconds=$(($CMD_DURATION % 60));
+
+        PS1+="${TXT_LIGHTGRAY}[";
+        if [[ $CMD_DURATION > 0 ]]; then
+            (( $days > 0 )) && PS1+="${days}d";
+            (( $hours > 0 )) && PS1+="${hours}h";
+            (( $minutes > 0 )) && PS1+="${minutes}m";
+            (( $seconds > 0 )) && PS1+="${seconds}s";
+        else
+            PS1+='0s';
+        fi;
+        PS1+='] ';
+    }
+
+    ##
+    # Add time in 24-hour "HH:MM:SS" format.
+    ##
+    function addTime()
+    {
+        PS1+="${TXT_DARKGRAY}";
+        if [[ "${ADVANCED_PS1_SHOWTIME12H:-0}" > 0 ]]; then
+            PS1+="\T ";
+        else
+            PS1+="\t ";
+        fi;
+    }
+
+    ##
+    # Add "user@host:path".
+    ##
+    function addUserHostPath()
+    {
+        if [[ $EUID == 0 ]]; then
+            PS1+="${TXT_RED}";
+        else
+            PS1+="${TXT_YELLOW}";
+        fi;
+        PS1+="\u"
+        PS1+="${TXT_LIGHTGRAY}";
+        PS1+="@\h:\w ";
+    }
+
+    ##
+    # Add Git status.
+    ##
+    function addGitStatus()
+    {
+        local status="$(git status 2>/dev/null)";
+
+        if [[ ! -z "${status}" ]]; then
+            echo "${status}" | grep 'nothing to commit' &>/dev/null;
+            if [[ $? == 0 ]]; then
+                PS1+="${TXT_GREEN}";
+            else
+                echo "${status}" | grep 'Untracked files:' &>/dev/null;
+                if [[ $? == 0 ]]; then
+                    PS1+="${TXT_RED}";
+                else
+                    PS1+="${TXT_LIGHTRED}";
+                fi;
+            fi;
+            if [[ $(type -t '__git_ps1') == 'function' ]]; then
+                PS1+="$(__git_ps1 2>/dev/null | cut -c 2- 2>/dev/null)";
+            fi;
+        fi;
+    }
+
+    ##
+    # Add prompt: "#" for root, "$" for user.
+    ##
+    function addPrompt()
+    {
+        PS1+="${TXT_LIGHTGRAY}";
+        PS1+='\$ ';
+    }
+
+    ##
+    # Reset color.
+    ##
+    function resetColor()
+    {
+        PS1+="${TXT_RESET}";
+    }
+
+    # call main method.
+    main "$@";
+
+    # unset methods.
+    unset main;
+    unset clearTimer;
+    unset clearPS1;
+    unset setPS1;
+    unset addNewline;
+    unset addStatus;
+    unset addExitCode;
+    unset addExitCodeMessage;
+    unset addDuration;
+    unset addTime;
+    unset addUserHostPath;
+    unset addGitStatus;
+    unset addPrompt;
+    unset resetColor;
+}
+
+##
+# Advanced PS1 "DEBUG" trap.
+##
+function __advanced_ps1_debug_trap()
+{
+    __advanced_ps1_timer=${__advanced_ps1_timer:-$SECONDS};
+}
+
