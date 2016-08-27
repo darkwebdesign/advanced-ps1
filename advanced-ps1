@@ -1,44 +1,27 @@
 #!/bin/bash
 ##
-# Advanced PS1.
+# Copyright (c) 2016 DarkWeb Design
 #
-# @author  Raymond Schouten
-# @version 2016-03-08
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 #
-#
-# Usage in .bashrc:
-# ~~~~~~~~~~~~~~~~~
-# # Source advanced PS1.
-# source '/path/to/advancedps1';
-#
-# # Enable advanced PS1 duration measurement.
-# trap '__advanced_ps1_debug_trap' DEBUG;
-#
-# # Enable advanced PS1.
-# PROMPT_COMMAND='__advanced_ps1';
-#
-#
-# Available options:
-# ~~~~~~~~~~~~~~~~~~
-# * ADVANCED_PS1_SHOWNEWLINE
-#   Show "newline" character and place prompt on new line when prompt was
-#   appended to last command output.
-#
-# * ADVANCED_PS1_SHOW0EXITCODE
-#   Always show exit code, even when it is 0.
-#
-# * ADVANCED_PS1_SHOWEXITCODEMESSAGE
-#   Show message if possible for exit code.
-#
-# * ADVANCED_PS1_SHOW0DURATION
-#   Always show duration, even when it is 0 seconds.
-#
-# * ADVANCED_PS1_SHOWTIME12H
-#   Show time in 12-hour format. 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 ##
 
 ##
 # Advanced PS1.
+#
+# @author  Raymond Schouten
 ##
 function __advanced_ps1()
 {
